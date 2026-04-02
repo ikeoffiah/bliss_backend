@@ -145,8 +145,12 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 FIREBASE_CREDENTIALS_PATH = os.path.join(
-    os.path.dirname(__file__), "serviceAccountKey.json"
+    BASE_DIR, "serviceAccountKey.json"
 )
 
 if not firebase_admin._apps:
