@@ -10,7 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
+import firebase_admin
+from firebase_admin import credentials
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'authentication',
     'onboarding',
     'partner_profile',
     'question_game',
@@ -99,6 +104,10 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
 }
 
+ENCRYPTION_KEY = b"GTcBO0aHXoewHiHpkkZYlt0z9llQrtt-IwKjfnwiNf4="
+
+AUTH_USER_MODEL = "authentication.User"
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -135,3 +144,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+FIREBASE_CREDENTIALS_PATH = os.path.join(
+    os.path.dirname(__file__), "serviceAccountKey.json"
+)
+
+if not firebase_admin._apps:
+    cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+    firebase_admin.initialize_app(cred)
+    print("Firebase Admin initialized")
