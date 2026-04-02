@@ -43,3 +43,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         # Note: In a real app, 'user' is passed from request.user in the view
         # This serializer will be used largely for updates or first-time setups
         return super().create(validated_data)
+
+
+class ImageUploadSerializer(serializers.Serializer):
+    image = serializers.ImageField()
+    url = serializers.URLField(read_only=True)

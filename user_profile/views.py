@@ -1,7 +1,7 @@
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from .models import Profile
-from .serializers import ProfileSerializer
+from .serializers import ProfileSerializer, ImageUploadSerializer
 from django.core.files.storage import default_storage
 from django.conf import settings
 import os
@@ -36,7 +36,8 @@ class ProfileView(generics.GenericAPIView):
 
 class ImageUploadView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
-
+    serializer_class = ImageUploadSerializer
+    
     def post(self, request, *args, **kwargs):
         file_obj = request.FILES.get('image')
         if not file_obj:

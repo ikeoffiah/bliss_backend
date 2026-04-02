@@ -3,10 +3,12 @@ import string
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from user_profile.models import Profile
+from .serializers import CodeSerializer, PartnerStatusSerializer
 
 class GenerateCodeView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
-
+    serializer_class = CodeSerializer
+    
     def post(self, request, *args, **kwargs):
         profile, _ = Profile.objects.get_or_create(user=request.user)
         
@@ -25,7 +27,8 @@ class GenerateCodeView(generics.GenericAPIView):
 
 class JoinPartnerView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
-
+    serializer_class = CodeSerializer
+    
     def post(self, request, *args, **kwargs):
         code = request.data.get('code')
         if not code:
@@ -51,7 +54,8 @@ class JoinPartnerView(generics.GenericAPIView):
 
 class PartnerStatusView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
-
+    serializer_class = PartnerStatusSerializer
+    
     def get(self, request, *args, **kwargs):
         profile, _ = Profile.objects.get_or_create(user=request.user)
         

@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import User
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import AuthenticationFailed
+from drf_spectacular.utils import extend_schema_field
+from user_profile.models import Profile
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -27,6 +29,7 @@ class LoginSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=68, min_length=6, write_only=True)
     tokens = serializers.SerializerMethodField()
 
+    @extend_schema_field(serializers.DictField)
     def get_tokens(self, obj):
         user = User.objects.get(email=obj['email'])
         return user.tokens()
@@ -53,3 +56,27 @@ class LoginSerializer(serializers.ModelSerializer):
 
 class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField()
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+
+
+class UserWithProfileSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+    name = serializers.CharField(source='first_name')
+
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'name', 'profile']
+
+    @extend_schema_field(serializers.DictField)
+    def get_profile(self, obj):
+        from user_profile.serializers import ProfileSerializer
+        profile, _ = Profile.objects.get_or_create(user=obj)
+        return ProfileSerializer(profile).data

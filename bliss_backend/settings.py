@@ -162,6 +162,10 @@ FIREBASE_CREDENTIALS_PATH = os.path.join(
     BASE_DIR, "serviceAccountKey.json"
 )
 
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@bliss.com'
+
 if not firebase_admin._apps:
     cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
     firebase_admin.initialize_app(cred)

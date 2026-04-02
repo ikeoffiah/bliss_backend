@@ -1,14 +1,21 @@
 from django.shortcuts import render
 from rest_framework import generics, status, views, permissions
 from rest_framework.response import Response
-from .serializers import RegisterSerializer, LoginSerializer, GoogleAuthSerializer
-from .models import User
+from .serializers import (
+    RegisterSerializer, 
+    LoginSerializer, 
+    GoogleAuthSerializer,
+    EmailSerializer,
+    UserWithProfileSerializer,
+    VerifyEmailSerializer
+)
+from .models import User, OneTimePassword
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, force_str, smart_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
-# from .utils import Util
+from .utils import Util
 import firebase_admin
 from firebase_admin import auth
 
@@ -24,10 +31,18 @@ class RegisterView(generics.GenericAPIView):
 
         # Explicitly set is_active to True for now as requested for completeness
         user_obj = User.objects.get(email=user_data['email'])
-        user_obj.is_active = True
+        # user_obj.is_active = True # Removed: User must verify email first
         user_obj.save()
 
-        return Response(user_data, status=status.HTTP_201_CREATED)
+        # Send OTP
+        Util.send_generated_otp(user_obj)
+
+        response_data = {
+            'message': 'Account created successfully. A verification code has been sent to your email.',
+            'user': UserWithProfileSerializer(user_obj).data
+        }
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 class LoginAPIView(generics.GenericAPIView):
@@ -36,7 +51,15 @@ class LoginAPIView(generics.GenericAPIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        user = User.objects.get(email=serializer.validated_data['email'])
+        tokens = user.tokens()
+        
+        response_data = {
+            'token': tokens['access'],
+            'user': UserWithProfileSerializer(user).data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class GoogleSocialAuthView(generics.GenericAPIView):
@@ -75,8 +98,39 @@ class GoogleSocialAuthView(generics.GenericAPIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+class VerifyEmailView(generics.GenericAPIView):
+    serializer_class = VerifyEmailSerializer
+    
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        email = serializer.validated_data['email']
+        otp_code = serializer.validated_data['otp']
+        
+        try:
+            user = User.objects.get(email=email)
+            otp_obj = OneTimePassword.objects.get(user=user)
+            
+            if otp_obj.code == otp_code:
+                user.is_active = True
+                user.save()
+                otp_obj.delete() # Remove code after success
+                
+                return Response({'success': 'Email verified successfully. You can now login.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Invalid verification code'}, status=status.HTTP_400_BAD_REQUEST)
+                
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        except OneTimePassword.DoesNotExist:
+             return Response({'error': 'Verification code not found or already verified'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 class RequestPasswordResetEmail(generics.GenericAPIView):
-    # Simple placeholder for forgot password logic as requested
+    serializer_class = EmailSerializer
+    
     def post(self, request):
         email = request.data.get('email', '')
 
@@ -90,4 +144,3 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
             return Response({'success': 'We have sent you a link to reset your password', 'uidb64': uidb64, 'token': token}, status=status.HTTP_200_OK)
         
         return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
-
